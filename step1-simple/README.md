@@ -1,61 +1,76 @@
 # Step 1: Simple CUDA Kernel
 
 ## Goal
-Learn the basics of CUDA kernel development by implementing a simple element-wise addition operation.
+Learn the basics of CUDA kernel development by implementing a simple element-wise addition operation using direct `nvcc` compilation.
 
 ## What You'll Learn
 - Basic CUDA kernel structure
 - Thread indexing and boundary checking
-- PyTorch C++ extensions
+- Direct CUDA compilation with `nvcc`
 - CUDA memory management basics
 - Performance benchmarking
+- Error handling in CUDA
 
 ## Files in This Step
-- `simple_kernel.cu` - The CUDA kernel implementation
-- `setup.py` - Build configuration
-- `test.py` - Test and benchmark script
+- `simple_kernel.cu` - The standalone CUDA C++ implementation
+- `setup.py` - Original PyTorch build configuration (for reference)
+- `test.py` - Original PyTorch test script (for reference)
 
 ## How to Run
 
-1. **Build the extension**:
-   ```bash
-   cd step1-simple
-   python setup.py build_ext --inplace
-   ```
+### Simple Compilation (Recommended)
+```bash
+cd step1-simple
+nvcc -o simple_kernel simple_kernel.cu
+./simple_kernel
+```
 
-2. **Run the test**:
-   ```bash
-   python test.py
-   ```
+### If you get driver/runtime version mismatch
+Use the CUDA version that matches your driver:
+```bash
+# Check your driver's CUDA version with: nvidia-smi
+# Then use the matching CUDA toolkit:
+/usr/local/cuda-12.8/bin/nvcc -o simple_kernel simple_kernel.cu
+./simple_kernel
+```
+
+### With specific GPU architecture (optional)
+```bash
+# For A10G/RTX 30xx series (Ampere)
+nvcc -o simple_kernel simple_kernel.cu --generate-code arch=compute_86,code=sm_86
+
+# For RTX 40xx series (Ada Lovelace)  
+nvcc -o simple_kernel simple_kernel.cu --generate-code arch=compute_89,code=sm_89
+```
 
 ## Expected Output
 ```
-🚀 Testing Simple CUDA Kernel (Step 1)
-==================================================
-GPU: NVIDIA GeForce RTX 4090
-CUDA Version: 11.8
+🚀 Simple CUDA Kernel - Element-wise Addition
+==============================================
+GPU: NVIDIA A10G
+Compute Capability: 8.6
+Max Threads Per Block: 1024
 
-🧪 Testing kernel correctness...
+🧪 Testing with 10000 elements (0.04 MB)
+Launching kernel: 40 blocks × 256 threads = 10240 total threads
 ✅ Correctness test PASSED!
+⚡ Performance: 0.003 ms (44.56 GB/s)
 
-⚡ Benchmarking performance...
+🧪 Testing with 1000000 elements (3.81 MB)
+Launching kernel: 3907 blocks × 256 threads = 1000192 total threads
+✅ Correctness test PASSED!
+⚡ Performance: 0.024 ms (491.97 GB/s)
 
-Testing size: 100x100 = 10,000 elements
-  Our CUDA kernel: 0.045 ms
-  PyTorch:         0.032 ms
-  Speedup:         0.71x
-
-Testing size: 1000x1000 = 1,000,000 elements
-  Our CUDA kernel: 0.156 ms
-  PyTorch:         0.145 ms
-  Speedup:         0.93x
-
-Testing size: 5000x5000 = 25,000,000 elements
-  Our CUDA kernel: 3.421 ms
-  PyTorch:         3.398 ms
-  Speedup:         0.99x
+🧪 Testing with 25000000 elements (95.37 MB)
+Launching kernel: 97657 blocks × 256 threads = 25000192 total threads
+✅ Correctness test PASSED!
+⚡ Performance: 0.607 ms (494.37 GB/s)
 
 🎉 All tests completed successfully!
+
+💡 To compile and run:
+   nvcc -o simple_kernel simple_kernel.cu
+   ./simple_kernel
 ```
 
 ## Understanding the Code
@@ -93,30 +108,88 @@ simple_add_kernel<<<blocks, threads_per_block>>>(...)
 - `blocks`: Number of thread blocks
 - `threads_per_block`: Threads per block (usually 256 or 512)
 
+**Memory Management**:
+```cpp
+// Allocate GPU memory
+cudaMalloc(&d_ptr, size_in_bytes);
+
+// Copy data to GPU
+cudaMemcpy(d_ptr, h_ptr, size, cudaMemcpyHostToDevice);
+
+// Copy data from GPU
+cudaMemcpy(h_ptr, d_ptr, size, cudaMemcpyDeviceToHost);
+
+// Free GPU memory
+cudaFree(d_ptr);
+```
+
+**Error Checking**:
+```cpp
+#define CUDA_CHECK(call) \
+    do { \
+        cudaError_t error = call; \
+        if (error != cudaSuccess) { \
+            printf("CUDA error: %s\n", cudaGetErrorString(error)); \
+            exit(1); \
+        } \
+    } while(0)
+```
+
 ## Performance Notes
 
-Don't worry if your kernel is slightly slower than PyTorch for simple operations. PyTorch's kernels are highly optimized. The real benefits come with more complex operations and kernel fusion.
+The program tests three different array sizes and measures:
+- **Correctness**: Verifies GPU results match CPU computation
+- **Performance**: Measures kernel execution time
+- **Bandwidth**: Calculates memory bandwidth utilization
+
+For simple element-wise operations like addition, performance is typically memory-bound rather than compute-bound. The A10G achieves ~490 GB/s which is close to its theoretical memory bandwidth.
 
 ## Troubleshooting
 
-**Build Errors**:
+**Compilation Errors**:
 - Check CUDA installation: `nvcc --version`
-- Verify PyTorch CUDA support: `torch.cuda.is_available()`
-- Check GPU compute capability matches setup.py
+- Verify GPU compute capability: `nvidia-smi`
+- Use appropriate CUDA version that matches your driver
 
 **Runtime Errors**:
-- Add error checking after kernel launch
-- Use `cuda-gdb` for debugging
-- Check tensor types and devices
+- **Driver version mismatch**: Use matching CUDA toolkit version (e.g., `/usr/local/cuda-12.8/bin/nvcc`)
+- **Out of memory**: Reduce array sizes in the code
+- **No CUDA devices**: Check `nvidia-smi` output
 
-## Next Step
+**GPU Architecture Flags**:
+- A10G/RTX 30xx: `--generate-code arch=compute_86,code=sm_86`
+- RTX 40xx: `--generate-code arch=compute_89,code=sm_89`
+- RTX 20xx: `--generate-code arch=compute_75,code=sm_75`
 
-Once this works correctly, proceed to `step2-attention/` to implement a more complex attention kernel.
+## Advantages of Direct nvcc Compilation
+
+1. **No dependencies**: Pure C++/CUDA, no Python/PyTorch needed
+2. **No version conflicts**: Works with any compatible CUDA/driver combination
+3. **Fast compilation**: Direct compilation without build system overhead
+4. **Better debugging**: Direct access to CUDA debugging tools (`cuda-gdb`)
+5. **Educational**: Clearer understanding of CUDA fundamentals
+6. **Portable**: Single source file, easy to share and modify
+
+## Next Steps
+
+This approach can be extended to more complex kernels:
+- Matrix multiplication
+- Convolution operations
+- Attention mechanisms
+- Custom fused operations
+
+The same compilation pattern works for any CUDA kernel:
+```bash
+nvcc -o my_kernel my_kernel.cu
+./my_kernel
+```
 
 ## Key Takeaways
 
 1. CUDA kernels run many threads in parallel
 2. Each thread processes one or more elements
-3. Always check array bounds
-4. PyTorch integration is straightforward with pybind11
-5. Simple kernels may not beat PyTorch's optimized implementations
+3. Always check array bounds and CUDA errors
+4. Memory bandwidth often limits performance for simple operations
+5. Direct nvcc compilation avoids framework dependencies
+6. Proper error handling is crucial for CUDA development
+7. Use the CUDA toolkit version that matches your driver
