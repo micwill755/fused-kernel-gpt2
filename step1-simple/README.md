@@ -6,15 +6,13 @@ Learn the basics of CUDA kernel development by implementing a simple element-wis
 ## What You'll Learn
 - Basic CUDA kernel structure
 - Thread indexing and boundary checking
-- Direct CUDA compilation with `nvcc`
+- CUDA compilation with `nvcc`
 - CUDA memory management basics
 - Performance benchmarking
 - Error handling in CUDA
 
 ## Files in This Step
 - `simple_kernel.cu` - The standalone CUDA C++ implementation
-- `setup.py` - Original PyTorch build configuration (for reference)
-- `test.py` - Original PyTorch test script (for reference)
 
 ## How to Run
 
