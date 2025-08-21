@@ -8,8 +8,10 @@
 #include <math.h>
 
 // CUDA kernel function - runs on GPU
+// A kernel is simply parallel code that runs on the GPU
 __global__ void simple_add_kernel(
-    const float* input_a,    // Input tensor A
+    const float* input_a,    // Input tensor A - in this example tensors are only a 1d array, but in future
+                             // examples these will become multi-dimensional tensors - GPT-2 operations: attention matrices, embeddings, layer outputs
     const float* input_b,    // Input tensor B  
     float* output,           // Output tensor
     int num_elements         // Total number of elements
@@ -63,11 +65,12 @@ double benchmark_kernel(float* d_a, float* d_b, float* d_output, int size, int i
     const int threads_per_block = 256;
     const int blocks = (size + threads_per_block - 1) / threads_per_block;
     
-    // Warm up
+    // Warm up - we create 10 identical runs of the same simple_add_kernel that will be timed later.
     for (int i = 0; i < 10; i++) {
         simple_add_kernel<<<blocks, threads_per_block>>>(d_a, d_b, d_output, size);
     }
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // cudaDeviceSynchronize() forces the CPU to wait for all GPU work to complete
+    CUDA_CHECK(cudaDeviceSynchronize()); 
     
     // Timing
     cudaEvent_t start, stop;
@@ -156,6 +159,12 @@ int main() {
         printf("Launching kernel: %d blocks × %d threads = %d total threads\n", 
                blocks, threads_per_block, blocks * threads_per_block);
         
+        // The <<<>>> syntax launches the kernel on the GPU - syntax can take up to 4 parameters, but only the first 2 are required:
+        // e.g. kernel <<<grid_size, block_size, shared_mem, stream>>>(args);
+        // grid_size (required): Number of thread blocks
+        // block_size (required): Threads per block
+        // shared_mem (optional): Shared memory bytes per block (default: 0)
+        // stream (optional): CUDA stream for async execution (default: 0)
         simple_add_kernel<<<blocks, threads_per_block>>>(d_a, d_b, d_output, size);
         CUDA_CHECK(cudaGetLastError());
         CUDA_CHECK(cudaDeviceSynchronize());

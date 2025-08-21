@@ -1,77 +1,25 @@
-# Makefile for CUDA Attention Kernel
+# Simple Makefile for CUDA Attention Kernel
 
-# Compiler settings
-NVCC = nvcc
-CXX = g++
+# CUDA paths (using CUDA 12.8 for compatibility)
+CUDA_PATH = /usr/local/cuda-12.8
+NVCC = $(CUDA_PATH)/bin/nvcc
+INCLUDES = -I$(CUDA_PATH)/include
+LIBS = -L$(CUDA_PATH)/lib64 -lcublas
 
-# CUDA architecture (adjust for your GPU)
-CUDA_ARCH = -arch=sm_70 -arch=sm_75 -arch=sm_80 -arch=sm_86
-
-# Compiler flags
-NVCC_FLAGS = -O3 --use_fast_math -Xptxas=-v $(CUDA_ARCH)
-CXX_FLAGS = -O3 -std=c++14
-
-# Include directories
-INCLUDES = -I/usr/local/cuda/include
-
-# Library directories and libraries
-LIBS = -L/usr/local/cuda/lib64 -lcudart -lcublas
-
-# Source files
-CUDA_SOURCES = attention_kernel.cu
-CPP_SOURCES = main.cpp
-OBJECTS = attention_kernel.o main.o
-
-# Target executable
-TARGET = attention_test
-
-# Default target
-all: $(TARGET)
-
-# Build the executable
-$(TARGET): $(OBJECTS)
-	$(NVCC) $(NVCC_FLAGS) $(OBJECTS) -o $(TARGET) $(LIBS)
-
-# Compile CUDA source files
-attention_kernel.o: attention_kernel.cu
-	$(NVCC) $(NVCC_FLAGS) $(INCLUDES) -c attention_kernel.cu -o attention_kernel.o
-
-# Compile C++ source files
-main.o: main.cpp
-	$(CXX) $(CXX_FLAGS) $(INCLUDES) -c main.cpp -o main.o
+# Basic build
+attention_test: attention_kernel.cu main.cpp attention_host.cpp
+	$(NVCC) -O3 --use_fast_math -arch=sm_86 -std=c++14 $(INCLUDES) $(LIBS) $^ -o $@
 
 # Clean build files
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f attention_test
 
 # Run the test
-run: $(TARGET)
-	./$(TARGET)
+run: attention_test
+	LD_LIBRARY_PATH=$(CUDA_PATH)/lib64:$$LD_LIBRARY_PATH ./attention_test
 
-# Debug build
-debug: NVCC_FLAGS += -g -G -DDEBUG
-debug: CXX_FLAGS += -g -DDEBUG
-debug: $(TARGET)
+# Multi-GPU architecture support (optional)
+multi-arch: attention_kernel.cu main.cpp attention_host.cpp
+	$(NVCC) -O3 --use_fast_math -arch=sm_70 -arch=sm_75 -arch=sm_80 -arch=sm_86 -std=c++14 $(INCLUDES) $(LIBS) $^ -o attention_test
 
-# Profile build
-profile: NVCC_FLAGS += -lineinfo
-profile: $(TARGET)
-
-# Check CUDA installation
-check-cuda:
-	@echo "Checking CUDA installation..."
-	@nvcc --version
-	@nvidia-smi
-
-# Help target
-help:
-	@echo "Available targets:"
-	@echo "  all      - Build the attention test program (default)"
-	@echo "  clean    - Remove build files"
-	@echo "  run      - Build and run the test program"
-	@echo "  debug    - Build with debug symbols"
-	@echo "  profile  - Build with profiling information"
-	@echo "  check-cuda - Check CUDA installation"
-	@echo "  help     - Show this help message"
-
-.PHONY: all clean run debug profile check-cuda help
+.PHONY: clean run multi-arch

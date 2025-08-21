@@ -4,8 +4,8 @@
 #include <random>
 #include <cmath>
 #include <cassert>
+#include <tuple>
 #include <cuda_runtime.h>
-#include <cublas_v2.h>
 
 // CUDA kernel declarations
 extern "C" {
