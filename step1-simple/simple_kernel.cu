@@ -91,7 +91,7 @@ double benchmark_kernel(float* d_a, float* d_b, float* d_output, int size, int i
 }
 
 int main() {
-    printf("🚀 Simple CUDA Kernel - Element-wise Addition\n");
+    printf("Simple CUDA Kernel - Element-wise Addition\n");
     printf("==============================================\n");
     
     // Initialize CUDA
@@ -99,7 +99,7 @@ int main() {
     CUDA_CHECK(cudaGetDeviceCount(&device_count));
     
     if (device_count == 0) {
-        printf("❌ No CUDA devices found!\n");
+        printf("No CUDA devices found!\n");
         return 1;
     }
     
@@ -120,7 +120,7 @@ int main() {
         int size = sizes[s];
         size_t bytes = size * sizeof(float);
         
-        printf("\n🧪 Testing with %d elements (%.2f MB)\n", size, bytes / (1024.0f * 1024.0f));
+        printf("\n Testing with %d elements (%.2f MB)\n", size, bytes / (1024.0f * 1024.0f));
         
         // Allocate host memory
         float* h_a = (float*)malloc(bytes);
@@ -128,7 +128,7 @@ int main() {
         float* h_output = (float*)malloc(bytes);
         
         if (!h_a || !h_b || !h_output) {
-            printf("❌ Failed to allocate host memory\n");
+            printf("Failed to allocate host memory\n");
             return 1;
         }
         
@@ -165,9 +165,9 @@ int main() {
         
         // Verify results
         if (verify_results(h_a, h_b, h_output, size)) {
-            printf("✅ Correctness test PASSED!\n");
+            printf("Correctness test PASSED!\n");
         } else {
-            printf("❌ Correctness test FAILED!\n");
+            printf("Correctness test FAILED!\n");
             return 1;
         }
         
@@ -186,10 +186,7 @@ int main() {
         CUDA_CHECK(cudaFree(d_output));
     }
     
-    printf("\n🎉 All tests completed successfully!\n");
-    printf("\n💡 To compile and run:\n");
-    printf("   nvcc -o simple_kernel simple_kernel.cu\n");
-    printf("   ./simple_kernel\n");
-    
+    printf("\nAll tests completed successfully!\n");
+
     return 0;
 }
